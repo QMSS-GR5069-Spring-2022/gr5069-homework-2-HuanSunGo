@@ -1,0 +1,397 @@
+---
+title: "hw01_hs3240_WinterOlympics"
+author: "Huan Sun"
+date: "2/10/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Preparation 
+## Load Packages 
+```{r}
+library(ggplot2)
+library(magrittr)
+library(tidyverse)
+library(viridis)
+library(dplyr)
+library(plotly)
+library(DT)
+library(ggpubr)
+
+```
+
+
+## Import datasets
+
+```{r}
+olympic <- read.csv("athletes_and_events.csv")
+gdp <- read.csv("gdp_pop.csv")
+noc <- read.csv("noc_regions.csv")
+
+```
+
+
+# Task
+## Task 1: Medal Counts Over Time
+a) Combine the information in the three spreadsheets.
+
+  - `noc_reg`: Find the  duplicates that one region has several NOCs. 
+  -`gdp_pop`: Since the population and GDP information are from this table, I would choose the NOC code here that contains a snapshot of the current set of countries as the **primary key**.
+  - `athletes_and_events.csv`: Add a new column that has the unified NOC, rename the old NOCs. 
+  
+```{r}
+one_region_with_several_nocs <- noc %>% 
+  add_count(region)%>%
+  filter(n>1)
+one_region_with_several_nocs
+# select the regions that have several NOCs.
+
+# For future use: eaiser way is to use "setdiff(noc$NOC,gdp$Code)"
+```
+```{r}
+setdiff(noc$NOC,gdp$Code)
+```
+
+ 
+```{r}
+code_merge <- one_region_with_several_nocs %>%
+  left_join(gdp,by=c("region"="Country"),suffix=c("_noc","_gdp"))
+code_merge
+```
+
+```{r include=FALSE}
+# manually create the (new NOC, old NOC) pairs that can be replaced in the `olympic` dataset
+olympic$NOC[olympic$NOC=="RHO"]<-"ZIM"
+olympic$NOC[olympic$NOC=="YAR"]<-"YEM"
+olympic$NOC[olympic$NOC=="YMD"]<-"YEM"              
+olympic$NOC[olympic$NOC=="VNM"]<-"VIE"
+olympic$NOC[olympic$NOC=="UAR"]<-"SYR"
+olympic$NOC[olympic$NOC=="SRB"]<-"SCG"              
+olympic$NOC[olympic$NOC=="YUG"]<-"SCG"              
+olympic$NOC[olympic$NOC=="EUN"]<-"RUS"
+olympic$NOC[olympic$NOC=="URS"]<-"RUS"  
+olympic$NOC[olympic$NOC=="MAL"]<-"MAS"
+olympic$NOC[olympic$NOC=="NBO"]<-"MAS"
+olympic$NOC[olympic$NOC=="CRT"]<-"GRE"
+olympic$NOC[olympic$NOC=="FRG"]<-"GER"
+olympic$NOC[olympic$NOC=="GDR"]<-"GER"
+olympic$NOC[olympic$NOC=="SAA"]<-"GER"
+olympic$NOC[olympic$NOC=="BOH"]<-"CZE"
+olympic$NOC[olympic$NOC=="TCH"]<-"CZE"
+olympic$NOC[olympic$NOC=="HKG"]<-"CHN"
+olympic$NOC[olympic$NOC=="NFL"]<-"CAN"
+olympic$NOC[olympic$NOC=="ANZ"]<-"AUS"
+
+#str_replace_all(olympic$NOC, c("RHO"="ZIM","YAR"="YEM","YMD"="YEM","VNM"="VIE","UAR"="SYR","SRB"="SCG",
+#                            "YUG"="SCG","EUN"="RUS","URS"="RUS","MAL"="MAS","NBO"="MAS","CRT"="GRE",
+#                            "FRG"="GER","GDR"="GER","SAA"="GER","BOH"="CZE","TCH"="CZE",
+#                            "HKG"="CHN","NFL"="CAN","ANZ"="AUS"))
+```
+
+```{r}
+# merge the gdp information with the olympic dataset, got the finalized data set.
+data <- olympic %>%
+  left_join(gdp,by=c("NOC"="Code"),suffix=c("_noc","_gdp"))
+data
+```
+
+b) Calculate a summary of how many winter games each country competed in, and how many medals of each type the country won. Use the summary to provide a **visual comparison of medal count by country**.
+
+```{r}
+winter <- data %>%
+  filter(Season=="Winter") %>%
+  add_count(Country)%>%
+  rename(game_counts=n)%>%
+  arrange(desc(game_counts))%>%
+  mutate(total_rank=dense_rank(desc(game_counts)))%>%
+  add_count(Country,Year) %>%
+  rename(year_count_compete=n)
+  #filter(rank<=10) 
+
+medal <- data%>%
+  filter(Season=="Winter") %>%
+  group_by(Country,Year,Sport,Event,Medal,Population,GDP.per.Capita) %>% # team events are counted as single medal
+  summarize(total=n())%>%
+  arrange(desc(total))%>%
+  filter(Medal!="NA")%>%
+  select(-total)%>%
+  arrange(Country,Year)
+
+gold <- medal %>%
+  filter(Medal=="Gold")
+```
+
+ - Winter Olympic Gold Medal Comparison of America Over Time
+```{r}
+america_gold_viz <- medal %>%
+  filter(Medal=="Gold",Country=="United States")%>%
+  group_by(Year)%>%
+  mutate(medal_count=n())%>%
+  select(Year,Sport,medal_count)%>%
+  ggplot(.,aes(Year,medal_count))+
+    geom_line(aes(group=Sport,color=Sport),linetype="dashed")+
+    geom_point(aes(Year,medal_count,color=Sport))+
+    scale_color_viridis(discrete=TRUE,option="D")+
+    labs(title="Winter Olympic Gold Medal Comparison of America Over Time")+
+    annotate(geom="vline",x=2002,xintercept=2002,linetype="longdash")+
+    annotate(geom="text",label="2002: Year with most gold medals.",x=2002,y=10,color="black",size=2)+
+    theme_classic()+
+    theme(plot.title=element_text(hjust=-0.5))
+
+america_gold_viz
+```
+ 
+ - Total Medal Count Across All Winter Olympics of All Time Across Sex
+```{r}
+# <- factor(winter$Sex)
+
+total_medal_viz <- winter%>%
+  filter(Medal!= "NA",total_rank<=5)%>%
+  group_by(Country)%>%
+  mutate(total_medal_count=n())%>%
+  ggplot(.,aes(x=reorder(Country,total_medal_count),total_medal_count,fill=reorder(Country, total_medal_count)))+  
+    geom_bar(stat="identity",width=0.5,alpha=0.7,position = "stack")+
+    geom_text(aes(label=total_medal_count),vjust=1.3,color="black",size=2.5)+
+    theme_classic()+
+    scale_color_viridis(discrete=TRUE,option="D")+
+    labs(x="Country",y="Total medal counts",title="Top5 Total Medal Counts Across Sex",fill='Country')+
+    theme(plot.title=element_text(hjust=0.5))
+  
+
+total_medal_viz 
+```
+
+
+Discussion: Although the information in the first graph may seems abundant, which shows not only the change of medal numbers of each sport, but also denote the point of the year that has the most medal, the picture itself is somewhat chaos, and the density of lines makes it difficult to read. Therefore I would recommend the second graph to the editor. 
+ 
+## Task 2: Medal Counts Adjusted by Population, GDP 
+ a) Value the model by index, e.g.((gold=3, silver=2, bronze=1)
+```{r}
+calculated_medal <- medal %>%
+  mutate(Points=case_when(Medal=="Gold" ~ 3,
+                          Medal=="Silver" ~ 2,
+                          Medal=="Bronze" ~ 1))%>%
+  group_by(Country)%>%
+  mutate(cal_medal_points=sum(Points))%>%
+  select(Country,cal_medal_points,Population,GDP.per.Capita)%>%
+  distinct()%>%
+  arrange(desc(cal_medal_points))%>%
+  ungroup()%>%
+  mutate(rank=row_number())
+
+calculated_medal
+```
+
+b) Create three rankings: un-adjusted ranking for  total number of medals earned, "adjusted" by GDP per capital for medals/GDP, and by population would be medals/population.
+```{r}
+# Un-adjusted ranking for total number of medals earned.
+unadj_top10<-calculated_medal%>%
+  filter(rank<=10)
+unadj_top10
+```
+
+```{r}
+# Adjusted by GDP. 
+adj_gdp <- calculated_medal%>%
+  mutate(medal_per_gdp=round(cal_medal_points/GDP.per.Capita,4))%>%
+  arrange(desc(medal_per_gdp))%>%
+  mutate(rank_gdp=row_number())
+
+adj_gdp_top10<- adj_gdp[1:10,]
+adj_gdp_top10
+
+```
+```{r}
+# Adjusted by population.
+adj_pop <- calculated_medal%>%
+  mutate(medal_per_pop=cal_medal_points/Population)%>%
+  arrange(desc(medal_per_pop))%>%
+  mutate(rank_pop=row_number())
+
+adj_pop_top10<- adj_pop[1:10,]
+adj_pop_top10
+```
+Visualize the difference in rankings. 
+
+c) Create the viz for how these ranking differ, and highlight a pattern like "The superpowers losing their grip."
+
+```{r}
+plot_unadj<- unadj_top10%>%
+  ggplot(aes(x=reorder(Country,cal_medal_points),y=cal_medal_points,fill=cal_medal_points))+
+  geom_bar(stat="identity")+
+  theme_classic()+
+  scale_color_viridis(discrete=TRUE,option="D")+
+  theme(legend.position = "none")+
+  labs(x="Weighted Medal Counts",y="Countries",title="Un-adjusted")+
+  coord_flip()
+
+plot_adj_pop<-adj_pop_top10%>%
+  ggplot(aes(x=reorder(Country,medal_per_pop),y=medal_per_pop,fill=medal_per_pop))+
+  geom_bar(stat="identity")+
+  theme_classic()+
+  scale_color_viridis(discrete=TRUE,option="D")+
+  theme(legend.position = "none")+
+  labs(x="Population-Adjusted Medal Counts",y="Countries",title="Pop-adjusted")+
+  coord_flip()
+
+plot_adj_gdp <- adj_gdp_top10 %>%
+  ggplot(aes(x=reorder(Country,medal_per_gdp),y=medal_per_gdp,fill=medal_per_gdp))+
+  geom_bar(stat="identity")+
+  theme_classic()+
+  scale_color_viridis(discrete=TRUE,option="D")+
+  theme(legend.position = "none")+
+  labs(x="GDP-Adjusted Medal Counts",y="Countries",title="GDP-adjusted")+
+  coord_flip()
+
+plot_compare <-ggarrange(plot_unadj,plot_adj_pop,plot_adj_gdp,nrow=1,ncol=3)
+plot_compare
+```
+From the comparison above, when the medal count wasn't adjusted at all, traditional super power like Russia,United States,Germany stands out. 
+When adjusted with population, the north-European countries like Liechtenstein, Norway, Finland stands out, and this is intuitive considering their natural advantage about the weather and landscape that suits for the winter sports. 
+When adjusted with GDP however, Russia and China stands out as these countries has relative low gdp but still managed to perform well in the Olympics. 
+
+## Task 3: Host Country Advantage
+Calculated by whether the host country did win more medals when held in their country compared to other times. 
+Provide a visualization of the host country advantage (or absence thereof).
+
+```{r}
+library(rvest)
+library(stringr)
+library(tidyverse)
+wiki_hosts <- read_html("https://en.wikipedia.org/wiki/List_of_Olympic_Games_host_cities")
+hosts <- html_table(html_nodes(wiki_hosts, "table")[[2]], fill=TRUE)[-1]
+hosts %>% filter(Winter != "") %>%
+  select(City, Country, Year)
+```
+As the indexed medal success (gold=3,silver=2, bronze=1) was introduced in the previous task, I would define that if the country has higher medal success when it hosts, then there's a host advantage. 
+
+```{r}
+# First revise some ambiguity of the data.
+hosts$Country[hosts$Country == 'Russia[h]'] <- "Russia"
+hosts$Country[hosts$Country=='Japan Germany'] <- 'Germany' 
+```
+
+```{r}
+# Only include the countries that host the winter Olympic.
+hosts<- hosts[!(hosts$Winter==""),]%>%
+  filter(Year<=2014)%>%
+  select(Country,Year)
+
+medal_success <- medal %>% # different from `medal` in that this one contains year information. 
+  mutate(Points=case_when(Medal=="Gold" ~ 3,
+                          Medal=="Silver" ~ 2,
+                          Medal=="Bronze" ~ 1))%>%
+  group_by(Country,Year)%>%
+  mutate(cal_medal_points=sum(Points))%>%
+  select(Country,cal_medal_points)%>%
+  distinct()%>%
+  arrange(Country,Year)
+
+# Join the hosting info onto the indexed medal success dataset.   
+medal_join <- medal_success %>%
+  inner_join(hosts,by=c("Country"),suffix=c("_game","_host"))%>%
+  mutate(Host=case_when(Year_game==Year_host ~ "Yes",
+                        TRUE ~ "No"))%>%
+  filter(Year_host!="", Year_host!="NA")
+
+medal_join
+```
+```{r}
+# For the Host=Yes, take its mean, and compare its mean points with this country's other year's mean. 
+host_adv <- medal_join %>%
+  group_by(Country,Host) %>%
+  mutate(Mean=case_when(Host=="Yes"~mean(cal_medal_points),
+                        TRUE~ mean(cal_medal_points)))
+
+host_adv %>%
+  select(Country,Host,Mean)%>%
+  distinct()%>%
+  mutate_if(is.numeric,round,digits=2)%>%
+  ggplot(.,aes(Country,Mean,group=Host,color=Host,fill=Host))+
+  geom_bar(stat = 'identity', position='dodge')+
+  theme_classic()+
+  labs(x="Country", y='Medal Success', title='Medal Success Against Hosting Status')+
+  theme(plot.title=element_text(hjust=0.5))
+  
+```
+From the visualization we can see that, for Canada, France, Russia and other 7 in total countries, there is a hosting advantage, yet Austria, Germany, Switzerland didn't follow this convention. Therefore, whether the hosing advantage do exist still need further study.
+
+
+#### Task 4: Most Successful Athletes
+a) Now, let's look at the most successful athletes. Provide a visual display of the most successful Winter Olympics athletes of all time.
+
+```{r}
+# Choose the top 5 athletes with the most medals.
+ath_top5 <- winter %>%
+  filter(Season == "Winter") %>% 
+  filter(Medal != "NA") %>% 
+  group_by(Name,Sex)%>%
+  summarise(medal_count =n())%>%
+  arrange(desc(medal_count))%>%
+  ungroup()%>%
+  mutate(rank=row_number()) %>%
+  filter(rank<=10)
+
+ath_top5%>%
+  ggplot(.,aes(x=reorder(Name,medal_count),y=medal_count,fill=Sex))+
+  geom_bar(stat="identity")+
+  facet_wrap(~Sex)+
+  labs(x="", y="Medal Count", title="Most Successful Athletes")+
+  theme(plot.title=element_text(hjust=1))+
+  theme_bw()+
+  coord_flip()
+  
+```
+It is quiet surprising to find out that female athletes out numbered males in terms of medal counts of all time!
+
+b) Chose one of the athlete specific dimensions (e.g. gender, height, weight) and visualize an interesting pattern in the data.
+```{r}
+# Speed skating, x=medal counts, y=height, color=gender. 
+speed_skating <- winter %>%
+  select(Name,Sex,Age,Height,Event,Medal)%>%
+  filter(str_detect(Event,"Speed Skating"),Medal!="NA")%>%
+  na.omit(speed_skating)%>% # drop all the NAs 
+  group_by(Medal,Sex,Height)%>%
+  summarise(count_medal =n()) %>%
+  arrange(desc(count_medal)) 
+
+speed_skating
+```
+```{r}
+speed_skating_viz<-speed_skating %>%
+  ggplot(.,aes(Height,count_medal))+
+  geom_point(aes(color=Medal,shape=Sex))+
+  geom_hline(yintercept = c(5,15),lty=2)+
+  geom_vline(xintercept=c(160,185),lty=2)+
+  theme_classic()+
+  labs(x="Height", y="Medal Counts", title="Height Influence on Medal Count for Speed Skating")+
+  theme(plot.title=element_text(hjust=0.5))
+
+speed_skating_viz
+```
+From the graph above, I find that the height range between 160cm and 185cm has the most medals, at the same time, for the height lower than 160cm, nobody had more than 5 medals ever, which suggests a relative recommended height range for speed skating. What's more, there's not a very obvious relationship between what type of medal the athlete gets and theirs height. 
+
+#### 5. Make two plots interactive.
+One can just use the `ggplotly` automation, one need to be written in `plotly`.
+```{r}
+ggplotly(speed_skating_viz)
+```
+
+```{r}
+plot_ly(data=adj_gdp_top10, x=~reorder(Country,cal_medal_points), y=~cal_medal_points, 
+        color="rank_gdp",type="bar", mode="markers") %>%
+  layout(title='Medal Counts adjusted by GDP',xaxis=list(title="Country"), yaxis=list(title="Calculated Medal Counts"))
+```
+
+Describe why interactivity in these viz is particularly helpful for a reader: 
+For the clarity of the charts, I didn't add the text to the plot, here with the interactivity, one can hover over their interested countries and find the result pairs. 
+
+#### Task 6: Prepare a selected data set and add a `datatable` to the output.
+```{r}
+datatable(adj_gdp_top10, rownames=FALSE, colnames=c("Country","Medal Points","Population","GDP per Capita","Un-adjusted Rank","Medal per GDP","GDP-adjusted Rank"), caption=htmltools::tags$caption("GDP Adjusted Medal Points Rank"), options=list(autoWidth = TRUE, dom = "ft", pageLength=10), filter = list(position="top"))
+```
+The column names are partly renamed for the sake of clarification, and I had also added the title to the table.
+For better understanding the difference in un-adjusted rank and the gdp-adjusted rank, the filter would of great help. And had we include more data into the datatable, the search option would be useful.
