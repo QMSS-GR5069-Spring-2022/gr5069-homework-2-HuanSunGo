@@ -57,6 +57,7 @@ setdiff(noc$NOC,gdp$Code)
 
  
 ```{r}
+# Merge one_region_with_serveral_nocs with gdp, on one_region_with_serveral_nocs$region and gdp$Country
 code_merge <- one_region_with_several_nocs %>%
   left_join(gdp,by=c("region"="Country"),suffix=c("_noc","_gdp"))
 code_merge
