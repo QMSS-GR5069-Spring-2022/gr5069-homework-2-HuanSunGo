@@ -224,7 +224,7 @@ c) Create the viz for how these ranking differ, and highlight a pattern like "Th
 ```{r}
 plot_unadj<- unadj_top10%>%
   ggplot(aes(x=reorder(Country,cal_medal_points),y=cal_medal_points,fill=cal_medal_points))+
-  geom_bar(stat="identity")+
+  geom_bar(stat="identity",fill="#f68060", alpha=.6, width=.4)+
   theme_classic()+
   scale_color_viridis(discrete=TRUE,option="D")+
   theme(legend.position = "none")+
@@ -233,7 +233,7 @@ plot_unadj<- unadj_top10%>%
 
 plot_adj_pop<-adj_pop_top10%>%
   ggplot(aes(x=reorder(Country,medal_per_pop),y=medal_per_pop,fill=medal_per_pop))+
-  geom_bar(stat="identity")+
+  geom_bar(stat="identity", fill="#f68060", alpha=.6, width=.4)+
   theme_classic()+
   scale_color_viridis(discrete=TRUE,option="D")+
   theme(legend.position = "none")+
@@ -242,7 +242,7 @@ plot_adj_pop<-adj_pop_top10%>%
 
 plot_adj_gdp <- adj_gdp_top10 %>%
   ggplot(aes(x=reorder(Country,medal_per_gdp),y=medal_per_gdp,fill=medal_per_gdp))+
-  geom_bar(stat="identity")+
+  geom_bar(stat="identity", fill="#f68060", alpha=.6, width=.4)+
   theme_classic()+
   scale_color_viridis(discrete=TRUE,option="D")+
   theme(legend.position = "none")+
