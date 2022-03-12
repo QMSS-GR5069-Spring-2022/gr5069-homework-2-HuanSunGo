@@ -161,7 +161,7 @@ total_medal_viz <- winter%>%
     theme_classic()+
     scale_color_viridis(discrete=TRUE,option="D")+
     labs(x="Country",y="Total medal counts",title="Top5 Total Medal Counts Across Sex",fill='Country')+
-    theme(plot.title=element_text(hjust=0.5))
+    theme(plot.title=element_text(hjust=0.5)) + theme(legend.position = "none")
   
 
 total_medal_viz 
