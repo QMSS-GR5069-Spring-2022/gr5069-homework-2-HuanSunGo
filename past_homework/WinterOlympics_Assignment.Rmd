@@ -228,7 +228,7 @@ plot_unadj<- unadj_top10%>%
   theme_classic()+
   scale_color_viridis(discrete=TRUE,option="D")+
   theme(legend.position = "none")+
-  labs(x="Weighted Medal Counts",y="Countries",title="Un-adjusted")+
+  labs(x="Countries",y="Weighted Medal Counts",title="Un-adjusted")+
   coord_flip()
 
 plot_adj_pop<-adj_pop_top10%>%
@@ -237,7 +237,7 @@ plot_adj_pop<-adj_pop_top10%>%
   theme_classic()+
   scale_color_viridis(discrete=TRUE,option="D")+
   theme(legend.position = "none")+
-  labs(x="Population-Adjusted Medal Counts",y="Countries",title="Pop-adjusted")+
+  labs(x="Countries",y="Pop-Adjusted Medal Counts",title="Pop-adjusted")+
   coord_flip()
 
 plot_adj_gdp <- adj_gdp_top10 %>%
@@ -246,7 +246,7 @@ plot_adj_gdp <- adj_gdp_top10 %>%
   theme_classic()+
   scale_color_viridis(discrete=TRUE,option="D")+
   theme(legend.position = "none")+
-  labs(x="GDP-Adjusted Medal Counts",y="Countries",title="GDP-adjusted")+
+  labs(x="Countries",y="GDP-Adjusted Medal Counts",title="GDP-adjusted")+
   coord_flip()
 
 plot_compare <-ggarrange(plot_unadj,plot_adj_pop,plot_adj_gdp,nrow=1,ncol=3)
