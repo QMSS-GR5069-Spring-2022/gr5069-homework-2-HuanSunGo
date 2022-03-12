@@ -27,9 +27,9 @@ library(ggpubr)
 ## Import datasets
 
 ```{r}
-olympic <- read.csv("athletes_and_events.csv")
-gdp <- read.csv("gdp_pop.csv")
-noc <- read.csv("noc_regions.csv")
+olympic <- read.csv("data/athletes_and_events.csv")
+gdp <- read.csv("data/gdp_pop.csv")
+noc <- read.csv("data/noc_regions.csv")
 
 ```
 
