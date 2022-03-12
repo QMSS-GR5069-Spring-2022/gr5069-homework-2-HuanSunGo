@@ -111,6 +111,7 @@ winter <- data %>%
   add_count(Country,Year) %>%
   rename(year_count_compete=n)
   #filter(rank<=10) 
+head(winter)
 
 medal <- data%>%
   filter(Season=="Winter") %>%
@@ -123,6 +124,7 @@ medal <- data%>%
 
 gold <- medal %>%
   filter(Medal=="Gold")
+head(gold)
 ```
 
  - Winter Olympic Gold Medal Comparison of America Over Time
