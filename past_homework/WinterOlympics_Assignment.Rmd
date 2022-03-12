@@ -341,7 +341,6 @@ ath_top5 <- winter %>%
 ath_top5%>%
   ggplot(.,aes(x=reorder(Name,medal_count),y=medal_count,fill=Sex))+
   geom_bar(stat="identity")+
-  facet_wrap(~Sex)+
   labs(x="", y="Medal Count", title="Most Successful Athletes")+
   theme(plot.title=element_text(hjust=1))+
   theme_bw()+
